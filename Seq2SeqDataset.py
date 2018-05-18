@@ -29,11 +29,13 @@ class Seq2SeqDataset(chainer.dataset.DatasetMixin):
                n_target_min_tokens <= len(t['encoded_tokens']) <= n_target_max_tokens
             ]
 
+        self.source_word_ids = source_data['word_ids']
+        self.target_word_ids = target_data['word_ids']
+        self.inv_source_word_ids = { v: k for k, v in source_data['word_ids'].items() }
+        self.inv_target_word_ids = { v: k for k, v in target_data['word_ids'].items() }
+
         if validation:
-            self.source_word_ids = source_data['word_ids']
-            self.target_word_ids = target_data['word_ids']
-            self.inv_source_word_ids = { v: k for k, v in source_data['word_ids'].items() }
-            self.inv_target_word_ids = { v: k for k, v in target_data['word_ids'].items() }
+            pass
 
     def __len__(self):
         return len(self.pairs)
