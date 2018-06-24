@@ -9,6 +9,7 @@ import argparse
 import collections
 import pickle
 import re
+from itertools import dropwhile
 
 from tqdm import tqdm
 
@@ -61,10 +62,13 @@ class Tokenizer(object):
             replace_digits=True
     ):
         """
+        initialize parameters which is used for preprocessing sentences.
+
         Parameters
         ----------
         lang: str
-            language to be processed
+            language to be processed.
+            it should be one of ja, en, ch.
         tokenize: bool
             tokenize sentences into pieces.
             set false if input sentence is already tokenized.
@@ -154,12 +158,14 @@ def token2index(tokens, word_ids):
 
 
 def load_pickle(in_file):
+    """load pickle file."""
     with open(in_file, 'rb') as f:
         row_data = pickle.load(f)
     return row_data
 
 
 def save_pickle(in_file, out_file):
+    """save pickle file."""
     with open(out_file, 'wb') as f:
         pickle.dump(in_file, f, pickle.HIGHEST_PROTOCOL)
 
@@ -233,15 +239,18 @@ if __name__ == '__main__':
         print('{0} - {1}'.format(word, num))
 
     # delete words less than cutoff
-    for word, num in tqdm(word_counter.items()):
-        if num > args.cutoff:
-            del word_counter[word]
+    for word, num in dropwhile(
+            lambda word_num: word_num[1] >= args.cutoff, word_counter.most_common()
+    ):
+        del word_counter[word]
 
     # pick up words of vocab_size
-    if args.vocab_size > len(word_counter):
-        word_counter = word_counter.most_common(args.vocab_size)
+    # minus 1 because unk is included.
+    word_counter = word_counter.most_common(
+        args.vocab_size-1 if args.vocab_size else len(word_counter)
+    )
 
-    for word, num in tqdm(word_counter.items()):
+    for word, num in tqdm(word_counter):
         if word not in word_ids:
             word_ids[word] = len(word_ids)
 
