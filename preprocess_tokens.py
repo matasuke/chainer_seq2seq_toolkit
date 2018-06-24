@@ -86,6 +86,8 @@ if __name__ == '__main__':
                         help="replace digits to 0 for all sentences.")
     parser.add_argument('--cutoff', type=int, default=5,
                         help="cutoff words less than the number digignated here")
+    parser.add_argument('--vocab_size', type=int, default=0,
+                        help='vocabrary size')
     parser.add_argument('--add_sos', action='store_true')
     parser.add_argument('--add_eos', action='store_true')
     args = parser.parse_args()
@@ -139,9 +141,10 @@ if __name__ == '__main__':
     for word, num in word_counter.most_common(30):
         print('{0} - {1}'.format(word, num))
 
-    for word, num in tqdm(word_counter.items()):
-        if num > args.cutoff and word not in word_ids:
-            word_ids[word] = len(word_ids)
+    if args.cutoff > 0:
+        for word, num in tqdm(word_counter.items()):
+            if num > args.cutoff and word not in word_ids:
+                word_ids[word] = len(word_ids)
 
     print('total distinct words except words less than {0}: {1}'.format(args.cutoff, len(word_ids)))
 
