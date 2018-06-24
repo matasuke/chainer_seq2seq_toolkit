@@ -17,26 +17,28 @@ class Tokenizer:
             'segmenter'
         ]
 
-    def __init__(self, lang='jp', to_lower=True, remove_suffix=True, replace_digits=True):
+    def __init__(self, lang='jp', tokenize=True, to_lower=True, remove_suffix=True, replace_digits=True):
         self.lang = lang
+        self.tokenize = tokenize
         self.to_lower = to_lower
         self.remove_suffix = remove_suffix
         self.replace_digits = replace_digits
         self.removed_char = re.compile(r'[.,!?"\'\";:。、]')
         self.split_digits = re.compile(r'\d')
 
-        if lang == 'jp':
-            from janome.tokenizer import Tokenizer
-            self.t = Tokenizer()
-            self.segmenter = lambda sentence: list(token.surface for token in self.t.tokenize(sentence))
+        if self.tokenze:
+            if lang == 'jp':
+                from janome.tokenizer import Tokenizer
+                self.t = Tokenizer()
+                self.segmenter = lambda sentence: list(token.surface for token in self.t.tokenize(sentence))
 
-        elif lang == 'ch':
-            import jieba
-            self.segmenter = lambda sentence: list(jieba.cut(sentence))
+            elif lang == 'ch':
+                import jieba
+                self.segmenter = lambda sentence: list(jieba.cut(sentence))
 
-        elif lang == 'en':
-            import nltk
-            self.segmenter = lambda sentence: list(nltk.word_tokenize(sentence))
+            elif lang == 'en':
+                import nltk
+                self.segmenter = lambda sentence: list(nltk.word_tokenize(sentence))
 
     def pre_process(self, sentence):
         
@@ -49,7 +51,7 @@ class Tokenizer:
         if self.replace_digits:
             sentence = self.split_digits.sub('0', sentence)
         
-        return self.segmenter(sentence)
+        return self.segmenter(sentence) if self.tokenize else sentence.split()
 
 def count_lines(path):
     pass
@@ -72,10 +74,12 @@ def save_pickle(in_file, out_file):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('in_path_train', type=str,
+    parser.add_argument('in_path', type=str,
                         help="input path to corpas")
     parser.add_argument('out_path', type=str,
                         help="output path to result")
+    parser.add_argument('--tokenize', action='store_true',
+                        help='tokenize in_path file')
     parser.add_argument('--lang', type=str, choices=['jp', 'en', 'ch'],
                         help="language to be processed")
     parser.add_argument('--tolower', action='store_true',
@@ -88,36 +92,30 @@ if __name__ == '__main__':
                         help="cutoff words less than the number digignated here")
     parser.add_argument('--vocab_size', type=int, default=0,
                         help='vocabrary size')
-    parser.add_argument('--add_sos', action='store_true')
-    parser.add_argument('--add_eos', action='store_true')
     args = parser.parse_args()
 
-    tokenizer = Tokenizer(lang=args.lang, to_lower=args.tolower, remove_suffix=args.remove_suffix)
+    tokenizer = Tokenizer(lang=args.lang, tokenize=args.tokenize, to_lower=args.tolower, remove_suffix=args.remove_suffix)
 
     sentence_idx = 0
     sentences = []
 
     word_counter = collections.Counter()
-    word_ids = collections.Counter({'<UNK>': 0})
+    word_ids = collections.Counter({
+                                    '<UNK>':0, 
+                                    '<SOS>':1,
+                                    '<EOS>':2
+                                })
 
-    if args.add_sos:
-        word_ids['<SOS>'] = len(word_ids)
-    if args.add_eos:
-        word_ids['<EOS>'] = len(word_ids)
-
-    
     # read files
-    f = open(args.in_path_train, 'r')
+    f = open(args.in_path, 'r')
     lines = f.readlines()
     
     #tokenize sentences
     for line in tqdm(lines):
         tokens = []
-        if args.add_sos:
-            tokens += ['<SOS>']
+        tokens += ['<SOS>']
         tokens += tokenizer.pre_process(line)
-        if args.add_eos:
-            tokens += ['<EOS>']
+        tokens += ['<EOS>']
 
         sentences.append({
             'sentence': line.strip(),
@@ -129,22 +127,24 @@ if __name__ == '__main__':
         sentence_idx += 1
 
         #add each word to word_counter
-        for token in tokens:
-            if token in word_counter:
-                word_counter[token] += 1
-            else:
-                word_counter[token] = 1
-
+        word_counter.update(tokens)
     
     print("total distinct words:{0}".format(len(word_counter)))
     print('top 30 frequent words:')
     for word, num in word_counter.most_common(30):
         print('{0} - {1}'.format(word, num))
 
-    if args.cutoff > 0:
-        for word, num in tqdm(word_counter.items()):
-            if num > args.cutoff and word not in word_ids:
-                word_ids[word] = len(word_ids)
+    # delete words less than cutoff
+    for word, num in tqdm(word_counter.items()):
+        if num > args.cutoff: del word_counter[word]
+    
+    # pick up words of vocab_size
+    if args.vocab_size > len(word_counter):
+        word_counter = word_counter.most_common(args.vocab_size)
+
+    for word, num in tqdm(word_counter.items()):
+        if word not in word_ids:
+            word_ids[word] = len(word_ids)
 
     print('total distinct words except words less than {0}: {1}'.format(args.cutoff, len(word_ids)))
 
