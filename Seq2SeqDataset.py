@@ -62,6 +62,7 @@ class Seq2SeqDatasetBase(chainer.dataset.DatasetMixin):
 
         return data
 
+    # return in percenrage ratio
     def calc_unk_ratio(self, data):
         unk = sum((s == self.source_word_ids['<UNK>']).sum() for s in data)
         words = sum(s.size for s in data)
@@ -77,6 +78,18 @@ class Seq2SeqDatasetBase(chainer.dataset.DatasetMixin):
     def get_example(self, i):
         return self.pairs[i]
 
+    def source_token2index(self, tokens):
+        return self.token2index(tokens, self.source_word_ids)
+
+    def source_index2token(self, indices):
+        return self.index2token(indices, self.inv_source_word_ids)
+
+    def target_token2index(self, tokens):
+        return self.token2index(tokens, self.target_word_ids)
+
+    def target_index2token(self, indices):
+        return self.index2token(indices, self.inv_target_word_ids)
+    
     @property
     def get_source_word_ids(self):
         return self.source_word_ids
@@ -92,19 +105,3 @@ class Seq2SeqDatasetBase(chainer.dataset.DatasetMixin):
     @property
     def target_unk_ratio(self):
         return self.calc_unk_ratio([t for _, t in self.pairs])
-
-    @property
-    def source_token2index(self, tokens):
-        return self.token2index(tokens, self.source_word_ids)
-
-    @property
-    def source_index2token(self, indices):
-        return self.index2token(indices, self.inv_source_word_ids)
-
-    @property
-    def target_token2index(self, tokens):
-        return self.token2index(tokens, self.target_word_ids)
-
-    @property
-    def target_index2token(self, indices):
-        return self.index2token(indices, self.inv_target_word_ids)
