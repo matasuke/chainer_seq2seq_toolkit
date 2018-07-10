@@ -29,7 +29,7 @@ class SoftAttention(chainer.Chain):
             self.fh = L.Linear(hidden_size, hidden_size)
             self.hh = L.Linear(hidden_size, hidden_size)
             self.hw = L.Linear(hidden_size, 1)
-    
+
     def UniDirectionalAttention(self, fh, h):
         batch_size = h.shape[0]
         ws = []
@@ -62,7 +62,6 @@ class SoftAttention(chainer.Chain):
             att_f += F.reshape(F.matmul(f, w), (batch_size, self.hidden_size))
             att_b += F.reshape(F.matmul(b, w), (batch_size, self.hidden_size))
 
-        
         return att_f, att_b
 
     def __call__(self, **args):
